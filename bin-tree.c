@@ -10,15 +10,19 @@ struct vertex
 	struct vertex *right;
 };
 
-int read_word(char *word);
+int read_word(char *word, FILE *fromfile);
 
-int is_space(int c);
+int isnt_word(int c);
 
-struct vertex *bintree(struct vertex *p, char *word);
+struct vertex *add_to_tree(struct vertex *p, char *word);
 
 struct vertex *create_vertex(struct vertex *p, char *word);
 
 void tree_print(struct vertex *p);
+
+void delete_vertex(struct vertex **p);
+
+void delete_tree(struct vertex **p);
 
 int str_compare(char *str1, char *str2);
 
@@ -28,35 +32,66 @@ int str_length(char *str);
 
 int main()
 {
+    FILE *fromfile = fopen("C:/C/Leto2021/rand-text.txt", "r");
 	struct vertex *root = NULL;
-	char *word = malloc(MAXWORD * sizeof(char));
-	while(read_word(word) != EOF)
-		root = bintree(root, word);
+	char *word = (char *)malloc(MAXWORD * sizeof(char));
+	int c;
+	do
+	{
+		c = read_word(word, fromfile);
+		root = add_to_tree(root, word);
+	}
+	while(c != EOF);
 	tree_print(root);
-	
+	delete_tree(&root);
+    
 	return 0;
 }
 
-int read_word(char *word)
+int read_word(char *word, FILE *fromfile)
 {
 	int c;
-	char *w = word;
-	while(!is_space(c = getchar()))
-		*(w++) = c;
+	while(isnt_word(c = getc(fromfile)))
+        if(c == EOF)
+            return EOF;
+	
+	do
+ 		*(word++) = c;
+    while(!isnt_word(c = getc(fromfile)));
+    *word = '\0';
+    
 	if(c == EOF)
 		return EOF;
-	*(w++) = '\0';
 	return 0;
 }
 
-int is_space(int c)
+int isnt_word(int c)
 {
-	if(c == ' ' || c == '\n' || c == EOF)
-		return 1;
-	return 0;
+    switch(c)
+    {
+        case ' ':
+        case '\n':
+        case '\t':
+        case '.':
+        case ',':
+        case '?':
+        case '!':
+        case '\'':
+        case '\"':
+        case ';':
+        case '-':
+        case ':':
+        case '\\':
+        case '/':
+        case '’':
+        case EOF:
+            return 1;
+        default:
+            return 0;
+    }
 }
 
-struct vertex *bintree(struct vertex *p, char *word)
+struct vertex *add_to_tree(struct vertex *p, char *word)
 {
 	int c;
 	if(p == NULL)
@@ -64,17 +99,16 @@ struct vertex *bintree(struct vertex *p, char *word)
 	else if((c = str_compare(word, p->word)) == 0) 
 		p->count++;
 	else if(c < 0)
-		p->left = bintree(p->left, word);
+		p->left = add_to_tree(p->left, word);
 	else
-		p->right = bintree(p->right, word);
+		p->right = add_to_tree(p->right, word);
 	
 	return p;
 }
 
 struct vertex *create_vertex(struct vertex *p, char *word)
 {
-	p = malloc(sizeof(struct vertex));
-	p->word = malloc(str_length(word) * sizeof(char));
+	p = (struct vertex *)malloc(sizeof(struct vertex));
 	p->word = str_copy(word);
 	p->count = 1;
 	p->left = p->right = NULL;
@@ -82,12 +116,29 @@ struct vertex *create_vertex(struct vertex *p, char *word)
 	return p;
 }
 
+void delete_vertex(struct vertex **p)
+{
+    struct vertex *t = *p;
+    free((*p)->word);
+    free(*p);
+    *p = NULL;
+}
+
+void delete_tree(struct vertex **p)
+{
+    if((*p)->left != NULL)
+        delete_tree(&((*p)->left));
+    if((*p)->right != NULL)
+        delete_tree(&((*p)->right));
+    delete_vertex(p);
+}
+
 void tree_print(struct vertex *p)
 {
 	if(p != NULL)
 	{
 		tree_print(p->left);
-        printf("%4d %s\n", p->count, p->word);
+        printf(" %s (%d) ", p->word, p->count);
         tree_print(p->right);
 	}
 }
@@ -107,10 +158,9 @@ int str_compare(char *str1, char *str2)
 char *str_copy(char *str)
 {
 	int len = str_length(str);
-	char *p = malloc(len * sizeof(char));
-	char *t = str;
-	while(*t != '\0')
-		*(p++) = *(t++);
+	char *p = (char *)malloc((len + 1) * sizeof(char));
+	while(*str != '\0')
+		*(p++) = *(str++);
 	*p = '\0';
 	return p - len;
 }
@@ -118,8 +168,7 @@ char *str_copy(char *str)
 int str_length(char *str)
 {
 	int count = 0;
-	char *p = str;
-	while(*(p++) != '\0')
+	while(*(str++) != '\0')
 		count++;
 	return count;
 }
